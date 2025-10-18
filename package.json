@@ -1,0 +1,47 @@
+{
+  "name": "rahu-protocol",
+  "version": "1.0.0",
+  "description": "Self-improving ZK-Native Layer 2 with autonomous AI agents for ETHOnline 2025",
+  "private": true,
+  "workspaces": [
+    "contracts",
+    "frontend",
+    "avail-integration"
+  ],
+  "scripts": {
+    "setup": "npm install && npm run setup:contracts && npm run setup:frontend && npm run setup:avail",
+    "setup:contracts": "cd contracts && npm install",
+    "setup:frontend": "cd frontend && npm install",
+    "setup:avail": "cd avail-integration && npm install",
+    "setup:agent": "cd agents && pip install -r requirements.txt",
+    "dev:contracts": "cd contracts && npx hardhat node",
+    "dev:frontend": "cd frontend && npm run dev",
+    "test": "npm run test:contracts && npm run test:agent",
+    "test:contracts": "cd contracts && npx hardhat test",
+    "test:agent": "cd agents && pytest",
+    "deploy": "./scripts/deploy-all.sh",
+    "lint": "npm run lint:contracts && npm run lint:frontend",
+    "lint:contracts": "cd contracts && npx hardhat check",
+    "lint:frontend": "cd frontend && npm run lint"
+  },
+  "keywords": [
+    "ethereum",
+    "layer2",
+    "zk-proofs",
+    "ai-agents",
+    "asi-alliance",
+    "avail",
+    "pyth-network",
+    "ethonline2025"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/rahu-protocol"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  }
+}
