@@ -3,14 +3,13 @@ Rahu Protocol - Autonomous AI Agent
 Built with uAgents framework for ASI Alliance prize track
 """
 
-from uagents import Agent, Context, Model, Bureau
-from uagents.setup import fund_agent_if_low
+from uagents import Agent, Context, Model
 import asyncio
-import json
 from loguru import logger
 from typing import Dict, List, Optional
 import os
 from dotenv import load_dotenv
+from src.metta_reasoning import get_reasoning_engine
 
 load_dotenv()
 
@@ -56,51 +55,25 @@ class ChatResponse(Model):
     timestamp: int
 
 class RahuAgent:
-    """
-    Autonomous AI agent that monitors blockchain health and proposes optimizations.
-    
-    Capabilities:
-    - Monitors network metrics via Pyth oracles
-    - Uses MeTTa reasoning to determine optimal parameters
-    - Generates ZK proofs for decision verification
-    - Communicates via ASI:One chat protocol
-    - Registers on Agentverse for discoverability (when enabled)
-    """
     
     def __init__(self):
-        # Get configuration
         agent_name = os.getenv("AGENT_NAME", "rahu_optimizer_agent")
         agent_seed = os.getenv("AGENT_SEED", "rahu_default_seed_phrase")
-        enable_registration = os.getenv("ENABLE_ALMANAC_REGISTRATION", "False").lower() == "true"
-        dev_mode = os.getenv("DEV_MODE", "True").lower() == "true"
         
-        # Initialize agent
-        if enable_registration:
-            # Full registration mode (requires funded wallet)
-            self.agent = Agent(
-                name=agent_name,
-                seed=agent_seed,
-                port=8001,
-                endpoint=["http://localhost:8001/submit"]
-            )
-        else:
-            # Development mode (no registration)
-            logger.info("🔧 Running in DEVELOPMENT mode (Almanac registration disabled)")
-            self.agent = Agent(
-                name=agent_name,
-                seed=agent_seed,
-                port=8001,
-                endpoint=["http://localhost:8001/submit"],
-                enable_wallet_messaging=False  # Disable wallet features in dev mode
-            )
+        # Always use mailbox for now
+        self.agent = Agent(
+            name=agent_name,
+            seed=agent_seed,
+            port=8001,
+            endpoint=["http://localhost:8001/submit"],
+            mailbox=True  # Use mailbox instead of direct registration
+        )
         
-        self.dev_mode = dev_mode
-        self.enable_registration = enable_registration
         self.monitoring_interval = int(os.getenv("MONITORING_INTERVAL", "30"))
         self.optimization_threshold = float(os.getenv("OPTIMIZATION_THRESHOLD", "0.15"))
         self.min_confidence = float(os.getenv("MIN_CONFIDENCE_SCORE", "0.75"))
         
-        # Storage (in-memory)
+        # Storage
         self.metrics_history: List[NetworkMetrics] = []
         self.proposals: List[OptimizationProposal] = []
         self.current_params = {
@@ -110,53 +83,41 @@ class RahuAgent:
         }
         
         logger.info(f"🌙 Rahu Agent initialized: {self.agent.address}")
-        logger.info(f"🔧 Development mode: {self.dev_mode}")
         
     def setup_handlers(self):
-        """Set up all message handlers for the agent"""
         
         @self.agent.on_event("startup")
         async def startup(ctx: Context):
-            """Initialize agent on startup"""
             logger.info(f"🚀 Rahu Agent starting up...")
             logger.info(f"📍 Agent address: {ctx.agent.address}")
-            
-            # Only try to fund in production mode
-            if self.enable_registration and not self.dev_mode:
-                try:
-                    fund_agent_if_low(ctx.agent.wallet.address())
-                    logger.info("✅ Agent wallet funded")
-                except Exception as e:
-                    logger.warning(f"⚠️  Could not fund agent: {e}")
             
             # Initialize storage
             ctx.storage.set("is_running", True)
             ctx.storage.set("metrics_count", 0)
             ctx.storage.set("proposals_count", 0)
-            ctx.storage.set("start_time", int(asyncio.get_event_loop().time()))
+            ctx.storage.set("start_time", 0)
             
             logger.success("✅ Agent startup complete - Ready to monitor!")
         
         @self.agent.on_interval(period=self.monitoring_interval)
         async def monitor_network(ctx: Context):
-            """Periodic network monitoring"""
             if not ctx.storage.get("is_running"):
                 return
                 
             logger.info("🔍 Monitoring network metrics...")
             
             try:
-                # Get metrics from blockchain/oracles
+                # Get metrics
                 metrics = await self.fetch_network_metrics(ctx)
                 
                 # Store metrics
                 self.metrics_history.append(metrics)
-                count = ctx.storage.get("metrics_count", 0) + 1
+                count = (ctx.storage.get("metrics_count") or 0) + 1
                 ctx.storage.set("metrics_count", count)
                 
                 logger.info(f"📊 Metrics #{count}: Gas={metrics.gas_price:.1f} Gwei, TPS={metrics.tps}, Congestion={metrics.congestion_level:.1%}")
                 
-                # Analyze and potentially propose optimization
+                # Check if optimization needed
                 should_opt = await self.should_optimize(metrics)
                 if should_opt:
                     logger.warning("⚠️  Optimization needed!")
@@ -164,42 +125,30 @@ class RahuAgent:
                     
                     if proposal and proposal.confidence_score >= self.min_confidence:
                         self.proposals.append(proposal)
-                        prop_count = ctx.storage.get("proposals_count", 0) + 1
+                        prop_count = (ctx.storage.get("proposals_count") or 0) + 1
                         ctx.storage.set("proposals_count", prop_count)
                         
                         logger.success(f"✨ Proposal #{prop_count} generated: {proposal.proposal_id}")
                         logger.info(f"   Expected improvement: {proposal.expected_improvement:.2%}")
                         logger.info(f"   Confidence: {proposal.confidence_score:.2%}")
-                        
-                        # In dev mode, just log; in production, broadcast
-                        if self.dev_mode:
-                            logger.info(f"   [DEV] Proposal would be broadcast in production")
-                        else:
-                            await ctx.send(self.agent.address, proposal)
+                        logger.info(f"   Reasoning: {proposal.reasoning}")
                 
             except Exception as e:
                 logger.error(f"❌ Error in monitoring: {e}")
-                import traceback
-                logger.error(traceback.format_exc())
         
         @self.agent.on_message(model=OptimizationProposal)
         async def handle_proposal(ctx: Context, sender: str, msg: OptimizationProposal):
-            """Handle optimization proposals"""
             logger.info(f"📨 Received proposal {msg.proposal_id} from {sender}")
             
-            # Validate proposal
             if msg.confidence_score >= self.min_confidence:
                 logger.success(f"✅ Proposal validated with {msg.confidence_score:.2%} confidence")
-                logger.info(f"   Reasoning: {msg.reasoning}")
             else:
                 logger.warning(f"⚠️  Proposal confidence too low: {msg.confidence_score:.2%}")
         
         @self.agent.on_message(model=ChatMessage)
         async def handle_chat(ctx: Context, sender: str, msg: ChatMessage):
-            """Handle ASI:One chat messages"""
             logger.info(f"💬 Chat from {sender}: {msg.message}")
             
-            # Process chat message and generate response
             response_text = await self.process_chat_message(msg.message)
             
             response = ChatResponse(
@@ -208,35 +157,15 @@ class RahuAgent:
                 timestamp=msg.timestamp
             )
             
-            # Send response back
             await ctx.send(sender, response)
             logger.info(f"💬 Sent response: {response_text[:50]}...")
-        
-        @self.agent.on_query(model=AgentStatus)
-        async def query_status(ctx: Context):
-            """Respond to status queries (ASI:One chat protocol)"""
-            import time
-            
-            status = AgentStatus(
-                agent_address=ctx.agent.address,
-                status="active" if ctx.storage.get("is_running") else "inactive",
-                last_check=int(time.time()),
-                metrics_count=ctx.storage.get("metrics_count", 0),
-                proposals_count=ctx.storage.get("proposals_count", 0)
-            )
-            
-            logger.info(f"📊 Status query: {status.metrics_count} metrics, {status.proposals_count} proposals")
-            return status
     
     async def fetch_network_metrics(self, ctx: Context) -> NetworkMetrics:
-        """Fetch current network metrics"""
         import time
         import random
         
-        # Simulate realistic network conditions
-        # In production, this will query Pyth oracles and on-chain data
         base_congestion = 0.5
-        time_factor = (time.time() % 300) / 300  # Varies over 5 minutes
+        time_factor = (time.time() % 300) / 300
         
         metrics = NetworkMetrics(
             timestamp=int(time.time()),
@@ -251,7 +180,6 @@ class RahuAgent:
         return metrics
     
     async def should_optimize(self, metrics: NetworkMetrics) -> bool:
-        """Determine if optimization is needed"""
         triggers = []
         
         if metrics.congestion_level > 0.7:
@@ -270,29 +198,34 @@ class RahuAgent:
         
         return False
     
-    async def generate_proposal(self, ctx: Context, metrics: NetworkMetrics) -> Optional[OptimizationProposal]:
-        """Generate optimization proposal"""
-        import time
-        import hashlib
+async def generate_proposal(self, ctx: Context, metrics: NetworkMetrics) -> Optional[OptimizationProposal]:
+    """Generate optimization proposal using MeTTa reasoning"""
+    import time
+    import hashlib
+    
+    # Use MeTTa reasoning engine
+    reasoning_engine = get_reasoning_engine()
+    
+    metrics_dict = {
+        'congestion_level': metrics.congestion_level,
+        'gas_price': metrics.gas_price,
+        'tps': metrics.tps,
+        'block_time': metrics.block_time
+    }
+    
+    history_length = len(self.metrics_history)
+    
+    # Get MeTTa reasoning
+    try:
+        proposed_params, reasoning_text, confidence = reasoning_engine.reason_about_optimization(
+            metrics_dict,
+            self.current_params,
+            history_length
+        )
         
-        proposed_params = self.current_params.copy()
-        reasoning = []
-        
-        # Parameter adjustments based on metrics
-        if metrics.congestion_level > 0.7:
-            increase = 1 + (metrics.congestion_level - 0.7) * 0.5
-            proposed_params["gas_limit"] = int(self.current_params["gas_limit"] * increase)
-            reasoning.append(f"Increase gas limit {(increase-1)*100:.1f}% (congestion: {metrics.congestion_level:.1%})")
-        
-        if metrics.gas_price > 120:
-            decrease = max(0.85, 1 - (metrics.gas_price - 120) / 1000)
-            proposed_params["block_time"] = self.current_params["block_time"] * decrease
-            reasoning.append(f"Decrease block time {(1-decrease)*100:.1f}% (gas: {metrics.gas_price:.1f} Gwei)")
-        
-        if metrics.tps < 250:
-            increase = 1 + (250 - metrics.tps) / 2000
-            proposed_params["max_tps"] = int(self.current_params["max_tps"] * increase)
-            reasoning.append(f"Increase max TPS {(increase-1)*100:.1f}% (current: {metrics.tps})")
+        if confidence < self.min_confidence:
+            logger.warning(f"⚠️  MeTTa confidence too low: {confidence:.2%} (need {self.min_confidence:.2%})")
+            return None
         
         # Calculate expected improvement
         improvements = []
@@ -303,17 +236,11 @@ class RahuAgent:
         
         expected_improvement = sum(improvements) / len(improvements) if improvements else 0
         
-        # Confidence based on data quality
-        history_length = len(self.metrics_history)
-        confidence = min(0.95, 0.65 + (history_length / 50) * 0.3)
-        
-        if confidence < self.min_confidence:
-            logger.warning(f"⚠️  Confidence too low: {confidence:.2%} (need {self.min_confidence:.2%})")
-            return None
-        
         proposal_id = hashlib.sha256(
             f"{metrics.timestamp}{proposed_params}".encode()
         ).hexdigest()[:16]
+        
+        logger.success(f"🧠 MeTTa reasoning complete: {confidence:.2%} confidence")
         
         return OptimizationProposal(
             proposal_id=proposal_id,
@@ -322,44 +249,38 @@ class RahuAgent:
             proposed_params=proposed_params,
             expected_improvement=expected_improvement,
             confidence_score=confidence,
-            reasoning=" | ".join(reasoning)
+            reasoning=reasoning_text
         )
+        
+    except Exception as e:
+        logger.error(f"❌ MeTTa reasoning failed: {e}")
+        return None
     
     async def process_chat_message(self, message: str) -> str:
-        """Process chat message and generate response (ASI:One protocol)"""
         message_lower = message.lower()
         
         if "status" in message_lower or "health" in message_lower:
-            return f"Agent is active. Monitored {len(self.metrics_history)} metrics, generated {len(self.proposals)} proposals."
-        
+            return f"Active. Monitored {len(self.metrics_history)} metrics, {len(self.proposals)} proposals."
         elif "proposal" in message_lower:
             if self.proposals:
                 latest = self.proposals[-1]
-                return f"Latest proposal: {latest.reasoning} (Confidence: {latest.confidence_score:.2%})"
-            return "No proposals generated yet."
-        
+                return f"Latest: {latest.reasoning} (Confidence: {latest.confidence_score:.2%})"
+            return "No proposals yet."
         elif "metrics" in message_lower:
             if self.metrics_history:
                 latest = self.metrics_history[-1]
-                return f"Latest metrics: Gas={latest.gas_price:.1f} Gwei, TPS={latest.tps}, Congestion={latest.congestion_level:.1%}"
-            return "No metrics collected yet."
-        
-        elif "help" in message_lower:
-            return "Ask me about: status, proposals, metrics, or optimization suggestions."
-        
+                return f"Gas={latest.gas_price:.1f} Gwei, TPS={latest.tps}, Congestion={latest.congestion_level:.1%}"
+            return "No metrics yet."
         else:
-            return f"I'm monitoring the Rahu L2. Ask me about status, proposals, or metrics!"
+            return "Ask about: status, proposals, or metrics"
     
     def run(self):
-        """Start the agent"""
         self.setup_handlers()
         
         logger.info("=" * 60)
         logger.info("🏃 Starting Rahu Agent...")
         logger.info(f"📍 Agent address: {self.agent.address}")
         logger.info(f"⏱️  Monitoring interval: {self.monitoring_interval}s")
-        logger.info(f"🎯 Optimization threshold: {self.optimization_threshold:.1%}")
-        logger.info(f"🔒 Min confidence: {self.min_confidence:.1%}")
         logger.info("=" * 60)
         
         self.agent.run()
