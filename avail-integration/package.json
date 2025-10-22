@@ -1,0 +1,28 @@
+{
+  "name": "rahu-avail-integration",
+  "version": "1.0.0",
+  "description": "Avail DA integration for Rahu Protocol",
+  "main": "src/avail-client.ts",
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/avail-client.ts",
+    "test": "jest",
+    "post-data": "ts-node src/data-poster.ts",
+    "verify-proof": "ts-node src/proof-generator.ts"
+  },
+  "dependencies": {
+    "@polkadot/api": "^10.11.3",
+    "@polkadot/keyring": "^12.6.2",
+    "@polkadot/util": "^12.6.2",
+    "@polkadot/util-crypto": "^12.6.2",
+    "ethers": "^6.9.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.11"
+  }
+}
