@@ -22,6 +22,28 @@ export default function ChatInterface() {
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // NEW: Agent connection status
+  const [agentConnected, setAgentConnected] = useState(false);
+  const agentApiUrl =
+    import.meta.env.VITE_AGENT_API_URL || "http://localhost:8001";
+
+  // NEW: Check agent connection
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const response = await fetch(`${agentApiUrl}/health`, {
+          signal: AbortSignal.timeout(2000),
+        });
+        setAgentConnected(response.ok);
+      } catch {
+        setAgentConnected(false);
+      }
+    };
+    checkConnection();
+    const interval = setInterval(checkConnection, 10000);
+    return () => clearInterval(interval);
+  }, [agentApiUrl]);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -44,7 +66,39 @@ export default function ChatInterface() {
     setInput("");
     setIsTyping(true);
 
-    // Simulate agent response
+    // Try real agent first, fallback to simulation
+    try {
+      if (agentConnected) {
+        const response = await fetch(`${agentApiUrl}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: userMessage.content,
+            sender: "user",
+            timestamp: userMessage.timestamp,
+          }),
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const agentMessage: Message = {
+            id: messages.length + 2,
+            sender: "agent",
+            content:
+              data.response || data.message || "I received your message!",
+            timestamp: Date.now(),
+          };
+          setMessages((prev) => [...prev, agentMessage]);
+          setIsTyping(false);
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn("Agent not responding, using simulated response");
+    }
+
+    // Fallback: Simulate agent response
     setTimeout(() => {
       const responses = [
         "Current network status: 847 TPS, 45 Gwei gas price. All systems operating normally.",
@@ -75,15 +129,29 @@ export default function ChatInterface() {
 
   return (
     <div className="card">
-      <div className="flex items-center space-x-3 mb-6">
-        <div className="p-2 bg-cyan-500/20 rounded-lg">
-          <MessageCircle className="w-6 h-6 text-cyan-400" />
+      {/* UPDATED: Header with connection status */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-cyan-500/20 rounded-lg">
+            <MessageCircle className="w-6 h-6 text-cyan-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">
+              ASI:One Chat Protocol
+            </h2>
+            <p className="text-sm text-gray-400">Talk to the AI Agent</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-bold text-white">
-            ASI:One Chat Protocol
-          </h2>
-          <p className="text-sm text-gray-400">Talk to the AI Agent</p>
+        {/* NEW: Connection indicator */}
+        <div className="flex items-center space-x-2">
+          <div
+            className={`w-2 h-2 rounded-full ${
+              agentConnected ? "bg-green-500 animate-pulse" : "bg-yellow-500"
+            }`}
+          />
+          <span className="text-xs text-gray-400">
+            {agentConnected ? "Agent Online" : "Simulated"}
+          </span>
         </div>
       </div>
 
