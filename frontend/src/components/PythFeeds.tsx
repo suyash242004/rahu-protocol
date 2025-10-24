@@ -61,7 +61,7 @@ export default function PythFeeds() {
 
   const fetchPrices = async () => {
     try {
-      const metrics = await pythContract.getLatestMetrics();
+      const metrics = await pythContract?.getLatestMetrics();
       const newGas = Number(metrics.gasPrice);
       const newEth = Number(metrics.ethPrice) / 1e8; // Pyth uses 8 decimals
 

@@ -1,44 +1,99 @@
 import { useState, useEffect } from "react";
 import { Bot, Activity, TrendingUp, Clock } from "lucide-react";
+import axios from "axios";
 
 interface AgentStatusProps {
   onConnectionChange: (connected: boolean) => void;
 }
 
+interface AgentData {
+  is_active: boolean;
+  metrics_count: number;
+  proposals_count: number;
+  last_check: number;
+  confidence: number;
+}
+
 export default function AgentStatus({ onConnectionChange }: AgentStatusProps) {
-  const [status, setStatus] = useState({
-    isActive: false,
-    metricsCount: 0,
-    proposalsCount: 0,
-    lastCheck: 0,
+  const [status, setStatus] = useState<AgentData>({
+    is_active: false,
+    metrics_count: 0,
+    proposals_count: 0,
+    last_check: 0,
     confidence: 0,
   });
+  const [, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [latestReasoning, setLatestReasoning] = useState<string>("");
+
+  const agentApiUrl =
+    import.meta.env.VITE_AGENT_API_URL || "http://localhost:8001";
 
   useEffect(() => {
-    // Simulate agent status updates
-    const interval = setInterval(() => {
-      setStatus((prev) => ({
-        isActive: true,
-        metricsCount: prev.metricsCount + 1,
-        proposalsCount: prev.proposalsCount + (Math.random() > 0.7 ? 1 : 0),
-        lastCheck: Date.now(),
-        confidence: Math.min(95, 65 + prev.metricsCount * 0.5),
-      }));
-      onConnectionChange(true);
-    }, 30000); // Every 30 seconds
-
-    // Initial load
-    setStatus({
-      isActive: true,
-      metricsCount: 15,
-      proposalsCount: 3,
-      lastCheck: Date.now(),
-      confidence: 78.5,
-    });
-    onConnectionChange(true);
-
+    fetchAgentStatus();
+    const interval = setInterval(fetchAgentStatus, 10000); // Every 10 seconds
     return () => clearInterval(interval);
-  }, [onConnectionChange]);
+  }, []);
+
+  const fetchAgentStatus = async () => {
+    try {
+      // Try to fetch real agent status
+      const response = await axios.get(`${agentApiUrl}/status`, {
+        timeout: 5000,
+      });
+
+      const data = response.data;
+      setStatus({
+        is_active: data.status === "active",
+        metrics_count: data.metrics_count || 0,
+        proposals_count: data.proposals_count || 0,
+        last_check: data.last_check || Date.now(),
+        confidence: calculateConfidence(data.metrics_count || 0),
+      });
+
+      onConnectionChange(true);
+      setError(null);
+      setLoading(false);
+
+      // Fetch latest proposal for reasoning
+      if (data.proposals_count > 0) {
+        fetchLatestProposal();
+      }
+    } catch (err) {
+      // Fallback to simulated data if agent not running
+      console.warn("Agent API not available, using simulated data");
+
+      setStatus((prev) => ({
+        is_active: true,
+        metrics_count: prev.metrics_count + 1,
+        proposals_count: prev.proposals_count + (Math.random() > 0.85 ? 1 : 0),
+        last_check: Date.now(),
+        confidence: Math.min(95, 65 + prev.metrics_count * 0.5),
+      }));
+
+      setLatestReasoning(
+        "Network congestion detected at 72%. Proposing gas limit increase by 15% to improve throughput."
+      );
+      onConnectionChange(false);
+      setError("Agent offline - showing simulated data");
+      setLoading(false);
+    }
+  };
+
+  const fetchLatestProposal = async () => {
+    try {
+      const response = await axios.get(`${agentApiUrl}/proposals/latest`);
+      if (response.data && response.data.reasoning) {
+        setLatestReasoning(response.data.reasoning);
+      }
+    } catch (err) {
+      console.warn("Could not fetch latest proposal");
+    }
+  };
+
+  const calculateConfidence = (metricsCount: number): number => {
+    return Math.min(95, 65 + (metricsCount / 50) * 30);
+  };
 
   return (
     <div className="card">
@@ -56,14 +111,20 @@ export default function AgentStatus({ onConnectionChange }: AgentStatusProps) {
         <div className="flex items-center space-x-2">
           <div
             className={`w-2 h-2 rounded-full ${
-              status.isActive ? "bg-green-500 animate-pulse" : "bg-red-500"
+              status.is_active ? "bg-green-500 animate-pulse" : "bg-red-500"
             }`}
           />
           <span className="text-sm text-gray-300">
-            {status.isActive ? "Active" : "Inactive"}
+            {status.is_active ? "Active" : "Inactive"}
           </span>
         </div>
       </div>
+
+      {error && (
+        <div className="mb-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+          <p className="text-sm text-yellow-300">⚠️ {error}</p>
+        </div>
+      )}
 
       <div className="space-y-4">
         {/* Metrics */}
@@ -74,7 +135,7 @@ export default function AgentStatus({ onConnectionChange }: AgentStatusProps) {
               <span className="text-sm text-gray-400">Metrics Collected</span>
             </div>
             <p className="text-2xl font-bold text-white">
-              {status.metricsCount}
+              {status.metrics_count}
             </p>
           </div>
 
@@ -84,7 +145,7 @@ export default function AgentStatus({ onConnectionChange }: AgentStatusProps) {
               <span className="text-sm text-gray-400">Proposals</span>
             </div>
             <p className="text-2xl font-bold text-white">
-              {status.proposalsCount}
+              {status.proposals_count}
             </p>
           </div>
         </div>
@@ -109,18 +170,19 @@ export default function AgentStatus({ onConnectionChange }: AgentStatusProps) {
         <div className="flex items-center space-x-2 text-sm text-gray-400">
           <Clock className="w-4 h-4" />
           <span>
-            Last check: {new Date(status.lastCheck).toLocaleTimeString()}
+            Last check: {new Date(status.last_check).toLocaleTimeString()}
           </span>
         </div>
 
         {/* Latest Reasoning */}
-        <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
-          <p className="text-sm text-purple-200">
-            🧠 <span className="font-semibold">Latest Reasoning:</span> Network
-            congestion detected at 72%. Proposing gas limit increase by 15% to
-            improve throughput.
-          </p>
-        </div>
+        {latestReasoning && (
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-lg p-4">
+            <p className="text-sm text-purple-200">
+              🧠 <span className="font-semibold">Latest Reasoning:</span>{" "}
+              {latestReasoning}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,259 @@
+{
+  "manifestVersion": "3.2",
+  "proxies": [
+    {
+      "address": "0xB6561def62C1D3C6a1dc75c18577CD7a3A0dF3bf",
+      "txHash": "0x7d4891524a03518b17488316e69620f109c64ea8c0c0f85d5e981e4f18b849ec",
+      "kind": "uups"
+    }
+  ],
+  "impls": {
+    "def01ab53ab6100346bcef33ec8e18b12dff171c73cc1548c51b1795b0ee9bd7": {
+      "address": "0xB253e155c3fe23772fB6254A4CAb3cF6BcA78366",
+      "txHash": "0x3bc811b1b97abbb6e8b744200e162302c326b382b444e308f930c4fa937cae82",
+      "layout": {
+        "solcVersion": "0.8.24",
+        "storage": [
+          {
+            "label": "params",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_struct(L2Params)2320_storage",
+            "contract": "RahuL2",
+            "src": "contracts\\RahuL2.sol:38"
+          },
+          {
+            "label": "aiGovernance",
+            "offset": 0,
+            "slot": "4",
+            "type": "t_address",
+            "contract": "RahuL2",
+            "src": "contracts\\RahuL2.sol:41"
+          },
+          {
+            "label": "zkVerifier",
+            "offset": 0,
+            "slot": "5",
+            "type": "t_address",
+            "contract": "RahuL2",
+            "src": "contracts\\RahuL2.sol:44"
+          },
+          {
+            "label": "pythOracle",
+            "offset": 0,
+            "slot": "6",
+            "type": "t_address",
+            "contract": "RahuL2",
+            "src": "contracts\\RahuL2.sol:47"
+          },
+          {
+            "label": "availBridge",
+            "offset": 0,
+            "slot": "7",
+            "type": "t_address",
+            "contract": "RahuL2",
+            "src": "contracts\\RahuL2.sol:50"
+          },
+          {
+            "label": "blocks",
+            "offset": 0,
+            "slot": "8",
+            "type": "t_mapping(t_uint256,t_struct(BlockData)2332_storage)",
+            "contract": "RahuL2",
+            "src": "contracts\\RahuL2.sol:53"
+          },
+          {
+            "label": "latestBlockNumber",
+            "offset": 0,
+            "slot": "9",
+            "type": "t_uint256",
+            "contract": "RahuL2",
+            "src": "contracts\\RahuL2.sol:54"
+          },
+          {
+            "label": "proposalCount",
+            "offset": 0,
+            "slot": "10",
+            "type": "t_uint256",
+            "contract": "RahuL2",
+            "src": "contracts\\RahuL2.sol:57"
+          }
+        ],
+        "types": {
+          "t_address": {
+            "label": "address",
+            "numberOfBytes": "20"
+          },
+          "t_bool": {
+            "label": "bool",
+            "numberOfBytes": "1"
+          },
+          "t_struct(InitializableStorage)73_storage": {
+            "label": "struct Initializable.InitializableStorage",
+            "members": [
+              {
+                "label": "_initialized",
+                "type": "t_uint64",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "_initializing",
+                "type": "t_bool",
+                "offset": 8,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(OwnableStorage)13_storage": {
+            "label": "struct OwnableUpgradeable.OwnableStorage",
+            "members": [
+              {
+                "label": "_owner",
+                "type": "t_address",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_struct(ReentrancyGuardStorage)226_storage": {
+            "label": "struct ReentrancyGuardUpgradeable.ReentrancyGuardStorage",
+            "members": [
+              {
+                "label": "_status",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              }
+            ],
+            "numberOfBytes": "32"
+          },
+          "t_uint256": {
+            "label": "uint256",
+            "numberOfBytes": "32"
+          },
+          "t_uint64": {
+            "label": "uint64",
+            "numberOfBytes": "8"
+          },
+          "t_bytes32": {
+            "label": "bytes32",
+            "numberOfBytes": "32"
+          },
+          "t_mapping(t_uint256,t_struct(BlockData)2332_storage)": {
+            "label": "mapping(uint256 => struct RahuL2.BlockData)",
+            "numberOfBytes": "32"
+          },
+          "t_struct(BlockData)2332_storage": {
+            "label": "struct RahuL2.BlockData",
+            "members": [
+              {
+                "label": "blockNumber",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "stateRoot",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "dataHash",
+                "type": "t_bytes32",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "timestamp",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              },
+              {
+                "label": "finalized",
+                "type": "t_bool",
+                "offset": 0,
+                "slot": "4"
+              }
+            ],
+            "numberOfBytes": "160"
+          },
+          "t_struct(L2Params)2320_storage": {
+            "label": "struct RahuL2.L2Params",
+            "members": [
+              {
+                "label": "gasLimit",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "0"
+              },
+              {
+                "label": "blockTime",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "1"
+              },
+              {
+                "label": "maxTPS",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "2"
+              },
+              {
+                "label": "lastUpdate",
+                "type": "t_uint256",
+                "offset": 0,
+                "slot": "3"
+              }
+            ],
+            "numberOfBytes": "128"
+          }
+        },
+        "namespaces": {
+          "erc7201:openzeppelin.storage.ReentrancyGuard": [
+            {
+              "contract": "ReentrancyGuardUpgradeable",
+              "label": "_status",
+              "type": "t_uint256",
+              "src": "@openzeppelin\\contracts-upgradeable\\utils\\ReentrancyGuardUpgradeable.sol:43",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Ownable": [
+            {
+              "contract": "OwnableUpgradeable",
+              "label": "_owner",
+              "type": "t_address",
+              "src": "@openzeppelin\\contracts-upgradeable\\access\\OwnableUpgradeable.sol:24",
+              "offset": 0,
+              "slot": "0"
+            }
+          ],
+          "erc7201:openzeppelin.storage.Initializable": [
+            {
+              "contract": "Initializable",
+              "label": "_initialized",
+              "type": "t_uint64",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:69",
+              "offset": 0,
+              "slot": "0"
+            },
+            {
+              "contract": "Initializable",
+              "label": "_initializing",
+              "type": "t_bool",
+              "src": "@openzeppelin\\contracts-upgradeable\\proxy\\utils\\Initializable.sol:73",
+              "offset": 8,
+              "slot": "0"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

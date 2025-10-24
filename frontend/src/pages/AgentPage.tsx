@@ -2,7 +2,7 @@ import { useState } from "react";
 import AgentStatus from "../components/AgentStatus";
 
 export default function AgentPage() {
-  const [isConnected, setIsConnected] = useState(false);
+  const [, setIsConnected] = useState(false);
 
   return (
     <div className="space-y-6">

@@ -35,7 +35,7 @@ export class AvailClient {
       rpcUrl:
         config?.rpcUrl ||
         process.env.AVAIL_RPC_URL ||
-        "wss://goldberg.avail.tools/ws",
+        "wss://turing-rpc.avail.so/ws",
       appId: config?.appId || parseInt(process.env.AVAIL_APP_ID || "0"),
       seed: config?.seed || process.env.AVAIL_SEED || "//Alice",
     };

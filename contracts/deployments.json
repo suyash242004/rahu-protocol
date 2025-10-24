@@ -1,0 +1,10 @@
+{
+  "network": "sepolia",
+  "chainId": "11155111",
+  "rahuL2": "0xB6561def62C1D3C6a1dc75c18577CD7a3A0dF3bf",
+  "aiGovernance": "0xD87F829dFe9474A2A466632ab036F9e35CC31D2d",
+  "zkVerifier": "0xb31AcDfaAac74731e655c96A90EB910dD827bFFB",
+  "pythOracle": "0xBb0a1269d09FEc7679f65515a4eA4a86e1f6aBA9",
+  "availBridge": "0xbE305c0166cE744ceac245Cc492C296196d36df1",
+  "deployer": "0xFCF1cdaB5269342B0b5447E3A5b8fa56c6B7B152"
+}

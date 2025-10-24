@@ -47,10 +47,10 @@ npm run verify-proof <blockHash>
 
 ## Testnet
 
-Using Avail Goldberg testnet:
+Using Avail Turing testnet:
 
-- RPC: wss://goldberg.avail.tools/ws
-- Explorer: https://goldberg.avail.tools
+- RPC: wss://turing-rpc.avail.so/ws
+- Explorer: https://explorer.avail.so
 
 ## Integration
 

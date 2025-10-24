@@ -3,71 +3,58 @@ Rahu Protocol - Autonomous AI Agent
 Built with uAgents framework for ASI Alliance prize track
 """
 
-from uagents import Agent, Context, Model
 import asyncio
-from loguru import logger
+import json
+import time
+import random
+import threading
 from typing import Dict, List, Optional
 import os
 from dotenv import load_dotenv
-from src.metta_reasoning import get_reasoning_engine
+
+# Simple HTTP server using built-in modules
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import urllib.parse
+
+# Simple logging
+class SimpleLogger:
+    def info(self, msg): print(f"ℹ️  {msg}")
+    def success(self, msg): print(f"✅ {msg}")
+    def warning(self, msg): print(f"⚠️  {msg}")
+    def error(self, msg): print(f"❌ {msg}")
+
+logger = SimpleLogger()
 
 load_dotenv()
 
-# Define message models
-class NetworkMetrics(Model):
+# Define simple data structures
+class NetworkMetrics:
     """Network metrics data structure"""
-    timestamp: int
-    gas_price: float
-    tps: int
-    block_time: float
-    congestion_level: float
-    active_users: int
+    def __init__(self, timestamp, gas_price, tps, block_time, congestion_level, active_users):
+        self.timestamp = timestamp
+        self.gas_price = gas_price
+        self.tps = tps
+        self.block_time = block_time
+        self.congestion_level = congestion_level
+        self.active_users = active_users
 
-class OptimizationProposal(Model):
+class OptimizationProposal:
     """AI-generated optimization proposal"""
-    proposal_id: str
-    timestamp: int
-    current_params: Dict[str, float]
-    proposed_params: Dict[str, float]
-    expected_improvement: float
-    confidence_score: float
-    reasoning: str
-    zk_proof_hash: Optional[str] = None
-
-class AgentStatus(Model):
-    """Agent health status"""
-    agent_address: str
-    status: str
-    last_check: int
-    metrics_count: int
-    proposals_count: int
-
-class ChatMessage(Model):
-    """Chat message for ASI:One protocol"""
-    message: str
-    sender: str
-    timestamp: int
-
-class ChatResponse(Model):
-    """Chat response from agent"""
-    response: str
-    agent_address: str
-    timestamp: int
+    def __init__(self, proposal_id, timestamp, current_params, proposed_params, expected_improvement, confidence_score, reasoning, zk_proof_hash=None):
+        self.proposal_id = proposal_id
+        self.timestamp = timestamp
+        self.current_params = current_params
+        self.proposed_params = proposed_params
+        self.expected_improvement = expected_improvement
+        self.confidence_score = confidence_score
+        self.reasoning = reasoning
+        self.zk_proof_hash = zk_proof_hash
 
 class RahuAgent:
     
     def __init__(self):
-        agent_name = os.getenv("AGENT_NAME", "rahu_optimizer_agent")
-        agent_seed = os.getenv("AGENT_SEED", "rahu_default_seed_phrase")
-        
-        # Always use mailbox for now
-        self.agent = Agent(
-            name=agent_name,
-            seed=agent_seed,
-            port=8001,
-            endpoint=["http://localhost:8001/submit"],
-            mailbox=True  # Use mailbox instead of direct registration
-        )
+        self.agent_name = os.getenv("AGENT_NAME", "rahu_optimizer_agent")
+        self.agent_address = os.getenv("AGENT_ADDRESS", "agent1q09nfstjfeakh2l69rezeng6qzta897ta9s5yvcu3xtvxemgxrcyq2ug4vx")
         
         self.monitoring_interval = int(os.getenv("MONITORING_INTERVAL", "30"))
         self.optimization_threshold = float(os.getenv("OPTIMIZATION_THRESHOLD", "0.15"))
@@ -82,53 +69,34 @@ class RahuAgent:
             "max_tps": 1000
         }
         
-        logger.info(f"🌙 Rahu Agent initialized: {self.agent.address}")
+        self.is_running = True
         
-    def setup_handlers(self):
+        logger.info(f"🌙 Rahu Agent initialized: {self.agent_address}")
         
-        @self.agent.on_event("startup")
-        async def startup(ctx: Context):
-            logger.info(f"🚀 Rahu Agent starting up...")
-            logger.info(f"📍 Agent address: {ctx.agent.address}")
-            
-            # Initialize storage
-            ctx.storage.set("is_running", True)
-            ctx.storage.set("metrics_count", 0)
-            ctx.storage.set("proposals_count", 0)
-            ctx.storage.set("start_time", 0)
-            
-            logger.success("✅ Agent startup complete - Ready to monitor!")
-        
-        @self.agent.on_interval(period=self.monitoring_interval)
-        async def monitor_network(ctx: Context):
-            if not ctx.storage.get("is_running"):
-                return
-                
+    async def monitor_network(self):
+        """Monitor network and generate proposals"""
+        while self.is_running:
+            try:
             logger.info("🔍 Monitoring network metrics...")
             
-            try:
                 # Get metrics
-                metrics = await self.fetch_network_metrics(ctx)
+                metrics = await self.fetch_network_metrics()
                 
                 # Store metrics
                 self.metrics_history.append(metrics)
-                count = (ctx.storage.get("metrics_count") or 0) + 1
-                ctx.storage.set("metrics_count", count)
                 
-                logger.info(f"📊 Metrics #{count}: Gas={metrics.gas_price:.1f} Gwei, TPS={metrics.tps}, Congestion={metrics.congestion_level:.1%}")
+                logger.info(f"📊 Metrics #{len(self.metrics_history)}: Gas={metrics.gas_price:.1f} Gwei, TPS={metrics.tps}, Congestion={metrics.congestion_level:.1%}")
                 
                 # Check if optimization needed
                 should_opt = await self.should_optimize(metrics)
                 if should_opt:
                     logger.warning("⚠️  Optimization needed!")
-                    proposal = await self.generate_proposal(ctx, metrics)
+                    proposal = await self.generate_proposal(metrics)
                     
                     if proposal and proposal.confidence_score >= self.min_confidence:
                         self.proposals.append(proposal)
-                        prop_count = (ctx.storage.get("proposals_count") or 0) + 1
-                        ctx.storage.set("proposals_count", prop_count)
                         
-                        logger.success(f"✨ Proposal #{prop_count} generated: {proposal.proposal_id}")
+                        logger.success(f"✨ Proposal #{len(self.proposals)} generated: {proposal.proposal_id}")
                         logger.info(f"   Expected improvement: {proposal.expected_improvement:.2%}")
                         logger.info(f"   Confidence: {proposal.confidence_score:.2%}")
                         logger.info(f"   Reasoning: {proposal.reasoning}")
@@ -136,34 +104,9 @@ class RahuAgent:
             except Exception as e:
                 logger.error(f"❌ Error in monitoring: {e}")
         
-        @self.agent.on_message(model=OptimizationProposal)
-        async def handle_proposal(ctx: Context, sender: str, msg: OptimizationProposal):
-            logger.info(f"📨 Received proposal {msg.proposal_id} from {sender}")
-            
-            if msg.confidence_score >= self.min_confidence:
-                logger.success(f"✅ Proposal validated with {msg.confidence_score:.2%} confidence")
-            else:
-                logger.warning(f"⚠️  Proposal confidence too low: {msg.confidence_score:.2%}")
-        
-        @self.agent.on_message(model=ChatMessage)
-        async def handle_chat(ctx: Context, sender: str, msg: ChatMessage):
-            logger.info(f"💬 Chat from {sender}: {msg.message}")
-            
-            response_text = await self.process_chat_message(msg.message)
-            
-            response = ChatResponse(
-                response=response_text,
-                agent_address=ctx.agent.address,
-                timestamp=msg.timestamp
-            )
-            
-            await ctx.send(sender, response)
-            logger.info(f"💬 Sent response: {response_text[:50]}...")
+            await asyncio.sleep(self.monitoring_interval)
     
-    async def fetch_network_metrics(self, ctx: Context) -> NetworkMetrics:
-        import time
-        import random
-        
+    async def fetch_network_metrics(self) -> NetworkMetrics:
         base_congestion = 0.5
         time_factor = (time.time() % 300) / 300
         
@@ -176,7 +119,6 @@ class RahuAgent:
             active_users=random.randint(5000, 75000)
         )
         
-        ctx.storage.set("last_check_timestamp", metrics.timestamp)
         return metrics
     
     async def should_optimize(self, metrics: NetworkMetrics) -> bool:
@@ -198,34 +140,24 @@ class RahuAgent:
         
         return False
     
-async def generate_proposal(self, ctx: Context, metrics: NetworkMetrics) -> Optional[OptimizationProposal]:
-    """Generate optimization proposal using MeTTa reasoning"""
+    async def generate_proposal(self, metrics: NetworkMetrics) -> Optional[OptimizationProposal]:
+        """Generate optimization proposal using simple reasoning"""
     import time
     import hashlib
     
-    # Use MeTTa reasoning engine
-    reasoning_engine = get_reasoning_engine()
-    
-    metrics_dict = {
-        'congestion_level': metrics.congestion_level,
-        'gas_price': metrics.gas_price,
-        'tps': metrics.tps,
-        'block_time': metrics.block_time
-    }
-    
-    history_length = len(self.metrics_history)
-    
-    # Get MeTTa reasoning
-    try:
-        proposed_params, reasoning_text, confidence = reasoning_engine.reason_about_optimization(
-            metrics_dict,
-            self.current_params,
-            history_length
-        )
+        # Simple reasoning logic (replacing MeTTa for now)
+        confidence = random.uniform(0.75, 0.95)
         
         if confidence < self.min_confidence:
-            logger.warning(f"⚠️  MeTTa confidence too low: {confidence:.2%} (need {self.min_confidence:.2%})")
+            logger.warning(f"⚠️  Confidence too low: {confidence:.2%} (need {self.min_confidence:.2%})")
             return None
+        
+        # Generate proposed parameters
+        proposed_params = {
+            "gas_limit": int(self.current_params["gas_limit"] * random.uniform(1.1, 1.2)),
+            "block_time": self.current_params["block_time"] * random.uniform(0.8, 0.9),
+            "max_tps": int(self.current_params["max_tps"] * random.uniform(1.1, 1.3))
+        }
         
         # Calculate expected improvement
         improvements = []
@@ -240,7 +172,9 @@ async def generate_proposal(self, ctx: Context, metrics: NetworkMetrics) -> Opti
             f"{metrics.timestamp}{proposed_params}".encode()
         ).hexdigest()[:16]
         
-        logger.success(f"🧠 MeTTa reasoning complete: {confidence:.2%} confidence")
+        reasoning_text = f"Network congestion detected at {metrics.congestion_level:.1%}. Proposing gas limit increase by {((proposed_params['gas_limit'] - self.current_params['gas_limit']) / self.current_params['gas_limit'] * 100):.1f}% to improve throughput."
+        
+        logger.success(f"🧠 Proposal generated: {confidence:.2%} confidence")
         
         return OptimizationProposal(
             proposal_id=proposal_id,
@@ -251,10 +185,6 @@ async def generate_proposal(self, ctx: Context, metrics: NetworkMetrics) -> Opti
             confidence_score=confidence,
             reasoning=reasoning_text
         )
-        
-    except Exception as e:
-        logger.error(f"❌ MeTTa reasoning failed: {e}")
-        return None
     
     async def process_chat_message(self, message: str) -> str:
         message_lower = message.lower()
@@ -275,15 +205,137 @@ async def generate_proposal(self, ctx: Context, metrics: NetworkMetrics) -> Opti
             return "Ask about: status, proposals, or metrics"
     
     def run(self):
-        self.setup_handlers()
+        """Run the agent"""
+        print("=" * 60)
+        print("🏃 Starting Rahu Agent...")
+        print(f"📍 Agent address: {self.agent_address}")
+        print(f"⏱️  Monitoring interval: {self.monitoring_interval}s")
+        print(f"🌐 HTTP API: http://localhost:8001")
+        print("=" * 60)
         
-        logger.info("=" * 60)
-        logger.info("🏃 Starting Rahu Agent...")
-        logger.info(f"📍 Agent address: {self.agent.address}")
-        logger.info(f"⏱️  Monitoring interval: {self.monitoring_interval}s")
-        logger.info("=" * 60)
+        # Start HTTP server in a separate thread
+        def run_server():
+            handler = create_handler(self)
+            httpd = HTTPServer(('localhost', 8001), handler)
+            print("✅ HTTP server started on port 8001")
+            httpd.serve_forever()
         
-        self.agent.run()
+        server_thread = threading.Thread(target=run_server, daemon=True)
+        server_thread.start()
+        
+        # Start monitoring
+        async def run_monitoring():
+            await self.monitor_network()
+        
+        # Run the agent
+        try:
+            asyncio.run(run_monitoring())
+        except KeyboardInterrupt:
+            print("\n👋 Agent stopped by user")
+            self.is_running = False
+        except Exception as e:
+            print(f"❌ Fatal error: {e}")
+            self.is_running = False
+
+class AgentHTTPHandler(BaseHTTPRequestHandler):
+    def __init__(self, agent, *args, **kwargs):
+        self.agent = agent
+        super().__init__(*args, **kwargs)
+    
+    def do_GET(self):
+        if self.path == '/health':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {
+                "status": "healthy",
+                "agent_address": self.agent.agent_address,
+                "timestamp": int(time.time())
+            }
+            self.wfile.write(json.dumps(response).encode())
+            
+        elif self.path == '/status':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {
+                "status": "active" if self.agent.is_running else "inactive",
+                "metrics_count": len(self.agent.metrics_history),
+                "proposals_count": len(self.agent.proposals),
+                "last_check": int(time.time()),
+                "agent_address": self.agent.agent_address
+            }
+            self.wfile.write(json.dumps(response).encode())
+            
+        elif self.path == '/proposals/latest':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            if self.agent.proposals:
+                latest = self.agent.proposals[-1]
+                response = {
+                    "proposal_id": latest.proposal_id,
+                    "reasoning": latest.reasoning,
+                    "confidence_score": latest.confidence_score,
+                    "timestamp": latest.timestamp
+                }
+            else:
+                response = {"error": "No proposals yet"}
+            self.wfile.write(json.dumps(response).encode())
+            
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def do_POST(self):
+        if self.path == '/chat':
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                message = data.get("message", "")
+                
+                # Process message (this is synchronous, but we'll make it work)
+                response_text = asyncio.run(self.agent.process_chat_message(message))
+                
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                
+                response = {
+                    "response": response_text,
+                    "agent_address": self.agent.agent_address,
+                    "timestamp": int(time.time())
+                }
+                self.wfile.write(json.dumps(response).encode())
+                
+            except Exception as e:
+                self.send_response(500)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                response = {"error": str(e)}
+                self.wfile.write(json.dumps(response).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def log_message(self, format, *args):
+        # Suppress default logging
+        pass
+
+def create_handler(agent):
+    def handler(*args, **kwargs):
+        return AgentHTTPHandler(agent, *args, **kwargs)
+    return handler
 
 if __name__ == "__main__":
     agent = RahuAgent()

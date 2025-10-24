@@ -13,7 +13,6 @@ import {
   MessageCircle,
   TrendingUp,
   Menu,
-  X,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -49,11 +48,13 @@ function AppContent() {
         <main className="flex-1 lg:ml-64 p-4 sm:p-6 lg:p-8 min-h-screen">
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/dashboard" element={<HomePage />} />
             <Route path="/agent" element={<AgentPage />} />
             <Route path="/oracle" element={<OraclePage />} />
             <Route path="/avail" element={<AvailPage />} />
             <Route path="/proofs" element={<ProofsPage />} />
             <Route path="/chat" element={<ChatPage />} />
+            <Route path="*" element={<HomePage />} />
           </Routes>
         </main>
       </div>
@@ -63,7 +64,7 @@ function AppContent() {
 }
 
 function Header({ onMenuClick }: { onMenuClick: () => void }) {
-  const [isConnected, setIsConnected] = useState(true);
+  const [isConnected] = useState(true);
 
   return (
     <header className="border-b border-white/10 backdrop-blur-sm bg-black/20 sticky top-0 z-50">
