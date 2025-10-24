@@ -1,5 +1,11 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, DollarSign, Fuel } from "lucide-react";
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Fuel,
+  ExternalLink,
+} from "lucide-react";
 import {
   LineChart,
   Line,
@@ -8,6 +14,8 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import { useContract } from "../hooks/useContract";
+import { PYTH_ORACLE_ABI } from "../utils/web3";
 
 interface PriceData {
   timestamp: number;
@@ -16,9 +24,13 @@ interface PriceData {
 }
 
 export default function PythFeeds() {
+  const pythAddress = import.meta.env.VITE_PYTH_ORACLE_ADDRESS;
+  const { contract: pythContract } = useContract(pythAddress, PYTH_ORACLE_ABI);
+
   const [data, setData] = useState<PriceData[]>([]);
   const [currentGas, setCurrentGas] = useState(45.2);
   const [currentEth, setCurrentEth] = useState(2847.5);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Initialize with some data
@@ -28,27 +40,64 @@ export default function PythFeeds() {
       ethPrice: 2800 + Math.random() * 100,
     }));
     setData(initialData);
+    setLoading(false);
+
+    // Try to fetch from contract, fallback to simulation
+    if (pythContract) {
+      fetchPrices();
+    }
 
     // Simulate real-time updates
     const interval = setInterval(() => {
-      const newGas = currentGas + (Math.random() - 0.5) * 5;
-      const newEth = currentEth + (Math.random() - 0.5) * 20;
+      if (pythContract) {
+        fetchPrices();
+      } else {
+        updateSimulatedPrices();
+      }
+    }, 5000);
 
-      setCurrentGas(newGas);
-      setCurrentEth(newEth);
+    return () => clearInterval(interval);
+  }, [pythContract]);
+
+  const fetchPrices = async () => {
+    try {
+      const metrics = await pythContract.getLatestMetrics();
+      const newGas = Number(metrics.gasPrice);
+      const newEth = Number(metrics.ethPrice) / 1e8; // Pyth uses 8 decimals
+
+      setCurrentGas(newGas > 0 ? newGas : currentGas);
+      setCurrentEth(newEth > 0 ? newEth : currentEth);
 
       setData((prev) => [
         ...prev.slice(-19),
         {
           timestamp: Date.now(),
-          gasPrice: newGas,
-          ethPrice: newEth,
+          gasPrice: newGas > 0 ? newGas : currentGas,
+          ethPrice: newEth > 0 ? newEth : currentEth,
         },
       ]);
-    }, 5000);
+    } catch (error) {
+      console.warn("Could not fetch from Pyth contract, using simulation");
+      updateSimulatedPrices();
+    }
+  };
 
-    return () => clearInterval(interval);
-  }, [currentGas, currentEth]);
+  const updateSimulatedPrices = () => {
+    const newGas = currentGas + (Math.random() - 0.5) * 5;
+    const newEth = currentEth + (Math.random() - 0.5) * 20;
+
+    setCurrentGas(newGas);
+    setCurrentEth(newEth);
+
+    setData((prev) => [
+      ...prev.slice(-19),
+      {
+        timestamp: Date.now(),
+        gasPrice: newGas,
+        ethPrice: newEth,
+      },
+    ]);
+  };
 
   const gasChange =
     data.length > 1
@@ -66,15 +115,43 @@ export default function PythFeeds() {
 
   return (
     <div className="card">
-      <div className="flex items-center space-x-3 mb-6">
-        <div className="p-2 bg-orange-500/20 rounded-lg">
-          <DollarSign className="w-6 h-6 text-orange-400" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-3">
+          <div className="p-2 bg-orange-500/20 rounded-lg">
+            <DollarSign className="w-6 h-6 text-orange-400" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Pyth Oracle Feeds</h2>
+            <p className="text-sm text-gray-400">Real-time Price Data</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-bold text-white">Pyth Oracle Feeds</h2>
-          <p className="text-sm text-gray-400">Real-time Price Data</p>
-        </div>
+        {pythContract && (
+          <a
+            href={`https://sepolia.etherscan.io/address/${pythAddress}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-orange-400 hover:text-orange-300 transition flex items-center space-x-1 text-xs"
+          >
+            <span>Contract</span>
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        )}
       </div>
+
+      {/* Status Message */}
+      {!pythContract ? (
+        <div className="mb-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3">
+          <p className="text-sm text-yellow-300">
+            ℹ️ Using simulated prices. Connect to see real Pyth data.
+          </p>
+        </div>
+      ) : (
+        <div className="mb-4 bg-green-500/10 border border-green-500/20 rounded-lg p-3">
+          <p className="text-sm text-green-300">
+            ✅ Connected to PythOracle contract.
+          </p>
+        </div>
+      )}
 
       {/* Current Prices */}
       <div className="grid grid-cols-2 gap-4 mb-6">
@@ -135,52 +212,64 @@ export default function PythFeeds() {
         <h3 className="text-sm font-medium text-gray-300 mb-3">
           Gas Price Trend (30min)
         </h3>
-        <ResponsiveContainer width="100%" height={150}>
-          <LineChart data={data}>
-            <XAxis
-              dataKey="timestamp"
-              tickFormatter={(ts) =>
-                new Date(ts).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              }
-              stroke="#6b7280"
-              style={{ fontSize: "12px" }}
-            />
-            <YAxis
-              stroke="#6b7280"
-              style={{ fontSize: "12px" }}
-              domain={["dataMin - 5", "dataMax + 5"]}
-            />
-            <Tooltip
-              contentStyle={{
-                backgroundColor: "rgba(0, 0, 0, 0.8)",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
-                borderRadius: "8px",
-              }}
-              labelFormatter={(ts) => new Date(ts).toLocaleTimeString()}
-              formatter={(value: number) => [
-                `${value.toFixed(2)} Gwei`,
-                "Gas Price",
-              ]}
-            />
-            <Line
-              type="monotone"
-              dataKey="gasPrice"
-              stroke="#fb923c"
-              strokeWidth={2}
-              dot={false}
-            />
-          </LineChart>
-        </ResponsiveContainer>
+        {loading ? (
+          <div className="h-[150px] flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500" />
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={150}>
+            <LineChart data={data}>
+              <XAxis
+                dataKey="timestamp"
+                tickFormatter={(ts) =>
+                  new Date(ts).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                }
+                stroke="#6b7280"
+                style={{ fontSize: "12px" }}
+              />
+              <YAxis
+                stroke="#6b7280"
+                style={{ fontSize: "12px" }}
+                domain={["dataMin - 5", "dataMax + 5"]}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "rgba(0, 0, 0, 0.8)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
+                  borderRadius: "8px",
+                }}
+                labelFormatter={(ts) => new Date(ts).toLocaleTimeString()}
+                formatter={(value: number) => [
+                  `${value.toFixed(2)} Gwei`,
+                  "Gas Price",
+                ]}
+              />
+              <Line
+                type="monotone"
+                dataKey="gasPrice"
+                stroke="#fb923c"
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Oracle Status */}
       <div className="mt-4 flex items-center justify-between text-sm">
         <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          <span className="text-gray-400">Oracle Active</span>
+          <div
+            className={`w-2 h-2 rounded-full ${
+              pythContract ? "bg-green-500 animate-pulse" : "bg-yellow-500"
+            }`}
+          />
+          <span className="text-gray-400">
+            {pythContract ? "Oracle Active" : "Simulated Mode"}
+          </span>
         </div>
         <span className="text-gray-500">Updated 5s ago</span>
       </div>
