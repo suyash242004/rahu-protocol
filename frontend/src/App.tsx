@@ -13,8 +13,10 @@ import {
   MessageCircle,
   TrendingUp,
   Menu,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
+import { useWeb3 } from "./hooks/useWeb3";
 
 // Import pages
 import HomePage from "./pages/HomePage";
@@ -64,7 +66,12 @@ function AppContent() {
 }
 
 function Header({ onMenuClick }: { onMenuClick: () => void }) {
-  const [isConnected] = useState(true);
+  const { address, isConnected, connectWallet, chainId } = useWeb3();
+  
+  const formatAddress = (addr: string) => {
+    if (!addr) return "";
+    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
 
   return (
     <header className="border-b border-white/10 backdrop-blur-sm bg-black/20 sticky top-0 z-50">
@@ -90,17 +97,44 @@ function Header({ onMenuClick }: { onMenuClick: () => void }) {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-            <div className="hidden sm:flex items-center space-x-2 px-4 py-2 bg-white/5 rounded-lg border border-white/10">
-              <div
-                className={`w-2 h-2 rounded-full ${
-                  isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"
-                }`}
-              />
-              <span className="text-sm text-gray-300">
-                {isConnected ? "Connected" : "Disconnected"}
-              </span>
-            </div>
+          <div className="flex items-center space-x-3">
+            {/* Network Status */}
+            {isConnected && chainId === 11155111 && (
+              <div className="hidden md:flex items-center space-x-2 px-3 py-2 bg-green-500/10 rounded-lg border border-green-500/20">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-xs text-green-300">Sepolia</span>
+              </div>
+            )}
+            
+            {isConnected && chainId !== 11155111 && (
+              <div className="hidden md:flex items-center space-x-2 px-3 py-2 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                <div className="w-2 h-2 rounded-full bg-yellow-500" />
+                <span className="text-xs text-yellow-300">Wrong Network</span>
+              </div>
+            )}
+            
+            {/* Wallet Button */}
+            {isConnected ? (
+              <div className="flex items-center space-x-2 px-4 py-2 bg-purple-500/20 rounded-lg border border-purple-500/30">
+                <Wallet className="w-4 h-4 text-purple-400" />
+                <span className="text-sm text-white font-mono hidden sm:inline">
+                  {formatAddress(address)}
+                </span>
+              </div>
+            ) : (
+              <button
+                onClick={connectWallet}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg border border-blue-500 transition-colors"
+              >
+                <Wallet className="w-4 h-4 text-white" />
+                <span className="text-sm text-white font-medium hidden sm:inline">
+                  Connect Wallet
+                </span>
+                <span className="text-sm text-white font-medium sm:hidden">
+                  Connect
+                </span>
+              </button>
+            )}
           </div>
         </div>
       </div>

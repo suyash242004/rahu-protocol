@@ -11,6 +11,7 @@ import threading
 from typing import Dict, List, Optional
 import os
 from dotenv import load_dotenv
+import hashlib
 
 # Simple HTTP server using built-in modules
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -77,7 +78,7 @@ class RahuAgent:
         """Monitor network and generate proposals"""
         while self.is_running:
             try:
-            logger.info("🔍 Monitoring network metrics...")
+                logger.info("🔍 Monitoring network metrics...")
             
                 # Get metrics
                 metrics = await self.fetch_network_metrics()
@@ -142,8 +143,7 @@ class RahuAgent:
     
     async def generate_proposal(self, metrics: NetworkMetrics) -> Optional[OptimizationProposal]:
         """Generate optimization proposal using simple reasoning"""
-    import time
-    import hashlib
+    
     
         # Simple reasoning logic (replacing MeTTa for now)
         confidence = random.uniform(0.75, 0.95)

@@ -21,7 +21,7 @@ interface L2Block {
 export class DataPoster {
   private availClient: AvailClient;
   private ethProvider: ethers.JsonRpcProvider;
-  private availBridge: ethers.Contract;
+  private availBridge: AvailBridge;
   private postingInterval: number;
   private isRunning: boolean = false;
 
@@ -45,7 +45,7 @@ export class DataPoster {
       bridgeAddress || ethers.ZeroAddress,
       bridgeABI,
       this.ethProvider
-    );
+    ) as unknown as AvailBridge;
   }
 
   /**

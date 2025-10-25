@@ -346,26 +346,54 @@ export default function ZKProofViewer() {
             <button
               className="mt-4 w-full btn-primary"
               onClick={async () => {
+                // Check if we have a contract instance
                 if (!aiGov) {
                   alert(
-                    "Contract not connected. Please deploy contracts first."
+                    "⚠️ Smart contracts not deployed.\n\n" +
+                    "To execute proposals, you need to:\n" +
+                    "1. Deploy contracts to Sepolia testnet\n" +
+                    "2. Update contract addresses in .env\n" + 
+                    "3. Connect your MetaMask wallet"
+                  );
+                  return;
+                }
+
+                // Check if window.ethereum exists (MetaMask)
+                if (!window.ethereum) {
+                  alert(
+                    "🦊 MetaMask not detected!\n\n" +
+                    "To execute on-chain transactions, please:\n" +
+                    "1. Install MetaMask extension\n" +
+                    "2. Connect to Sepolia testnet\n" +
+                    "3. Have some Sepolia ETH for gas"
                   );
                   return;
                 }
 
                 try {
-                  // Execute the proposal
-                  const tx = await aiGov.executeProposal(selectedProposal.id);
+                  // For demo purposes, show what would happen
                   alert(
-                    `Proposal execution initiated! Transaction: ${tx.hash}`
+                    "📋 Proposal Execution (Demo Mode)\n\n" +
+                    `Proposal #${selectedProposal.id} would:\n` +
+                    `• Change Gas Limit: ${(selectedProposal.gasLimit.current/1000000).toFixed(0)}M → ${(selectedProposal.gasLimit.proposed/1000000).toFixed(0)}M\n` +
+                    `• Change Block Time: ${selectedProposal.blockTime.current}s → ${selectedProposal.blockTime.proposed}s\n` +
+                    `• Change Max TPS: ${selectedProposal.maxTPS.current} → ${selectedProposal.maxTPS.proposed}\n\n` +
+                    "Status: Demo mode (contracts not deployed)"
                   );
-
-                  // Refresh proposals after execution
-                  setTimeout(() => fetchProposals(), 3000);
+                  
+                  // In production, this would execute:
+                  // const signer = await provider.getSigner();
+                  // const contractWithSigner = aiGov.connect(signer);
+                  // const tx = await contractWithSigner.executeProposal(selectedProposal.id);
+                  
                 } catch (error) {
                   console.error("Failed to execute proposal:", error);
                   alert(
-                    "Failed to execute proposal. Check console for details."
+                    "❌ Failed to execute proposal.\n\n" +
+                    "This is likely because:\n" +
+                    "• Contracts are not deployed to Sepolia\n" +
+                    "• Wallet is not connected\n" +
+                    "• Insufficient gas funds"
                   );
                 }
               }}
