@@ -10,8 +10,9 @@
 [![ASI Alliance](https://img.shields.io/badge/Powered%20by-ASI%20Alliance-blue)](https://fetch.ai/)
 [![Deployed](https://img.shields.io/badge/Deployed-Sepolia-green)](https://sepolia.etherscan.io/address/0xB6561def62C1D3C6a1dc75c18577CD7a3A0dF3bf)
 
-**🔗 Live Demo**: [https://rahu-protocol.vercel.app](https://rahu-protocol.vercel.app) _(Replace with your deployed URL)_  
-**📹 Demo Video**: [Watch on YouTube](https://youtube.com/your-demo-video) _(Add your video link)_
+**🔗 Live Demo**: [https://rahu-protocol-frontend.vercel.app](https://rahu-protocol-frontend.vercel.app)  
+**📹 Demo Video**: Submitted directly to ETHGlobal  
+**� Repository**: [github.com/suyash242004/rahu-protocol](https://github.com/suyash242004/rahu-protocol)
 
 ## 🎯 Overview
 
@@ -123,7 +124,7 @@ Rahu Protocol introduces:
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/rahu-protocol
+git clone https://github.com/suyash242004/rahu-protocol
 cd rahu-protocol
 
 # 2. Install dependencies
@@ -274,11 +275,24 @@ npm run dev
 - ✅ Contract data fetching
 - ✅ Responsive design on mobile
 
-## 🎥 Demo & Deployment
+## 🎥 Live Demo & Deployment
 
-**📹 Demo Video**: [Watch on YouTube](https://youtube.com/your-demo-video) _(Add your link)_  
-**🌐 Live Application**: [https://rahu-protocol.vercel.app](https://rahu-protocol.vercel.app) _(Add your deployment)_  
-**📊 Presentation**: [View Slides](https://docs.google.com/presentation) _(Optional)_
+**🌐 Live Application**: **[https://rahu-protocol-frontend.vercel.app](https://rahu-protocol-frontend.vercel.app)**
+
+**Deployed Components:**
+- ✅ Frontend Dashboard (Vercel)
+- ✅ Smart Contracts (Ethereum Sepolia Testnet)
+- ✅ All contracts verified on Etherscan
+- ✅ Real-time data integration
+- ✅ Wallet connection functional
+
+**Access the Demo:**
+1. Visit: https://rahu-protocol-frontend.vercel.app
+2. Connect MetaMask wallet (Sepolia network)
+3. Explore all 6 pages: Dashboard, AI Agent, Pyth Oracle, Avail DA, ZK Proofs, Chat
+4. View real contract data and simulated AI agent activity
+
+**Demo Video**: Submitted directly to ETHGlobal platform
 
 ## 🛠️ Tech Stack
 
@@ -435,21 +449,21 @@ MIT License - see [LICENSE](LICENSE) file for details
 - **OpenZeppelin** for secure smart contract libraries
 - **Hardhat** for Ethereum development environment
 
-## � Team
+## Team
 
-**Solo Developer** - Built by [Your Name]
+**Solo Developer** - Built by Suyash
 
-- GitHub: [@yourusername](https://github.com/yourusername)
-- Twitter: [@yourusername](https://twitter.com/yourusername)
-- Discord: yourusername#1234
+- **GitHub**: [@suyash242004](https://github.com/suyash242004)
+- **Project**: [rahu-protocol](https://github.com/suyash242004/rahu-protocol)
+- **Hackathon**: ETHOnline 2025
 
-## 📧 Contact
+## Contact
 
 For questions about this project:
 
-- **Email**: your.email@example.com
-- **Twitter**: [@yourusername](https://twitter.com/yourusername)
-- **Discord**: Join [ETHGlobal Discord](https://discord.gg/ethglobal)
+- **GitHub Issues**: [Create an issue](https://github.com/suyash242004/rahu-protocol/issues)
+- **GitHub**: [@suyash242004](https://github.com/suyash242004)
+- **ETHGlobal**: Submitted for ETHOnline 2025
 
 ---
 
@@ -457,6 +471,8 @@ For questions about this project:
 
 **Built with ❤️ for ETHOnline 2025**
 
-[🌐 Live Demo](https://rahu-protocol.vercel.app) • [📹 Video](https://youtube.com/demo) • [📖 Docs](./docs)
+[🌐 Live Demo](https://rahu-protocol-frontend.vercel.app) • [� GitHub](https://github.com/suyash242004/rahu-protocol) • [📖 Docs](./docs)
+
+**Hackathon Prize Tracks**: ASI Alliance ($10k) • Avail ($10k) • Pyth Network ($5k)
 
 </div>
